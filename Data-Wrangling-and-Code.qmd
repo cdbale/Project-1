@@ -1,0 +1,13 @@
+---
+title: "Data Wrangling and Code"
+author: "Sofia Scribner"
+format: docx
+editor: visual
+---
+
+## Data Wrangling
+
+```{r}
+
+library(tidyverse)
+```
