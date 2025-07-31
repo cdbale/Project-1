@@ -5,15 +5,20 @@ format: docx
 editor: visual
 ---
 
+In order to address iFood's concern that a large portion of the customers haven't made a purchase in over 60 days (customer churn) we need to do some wrangling and play around with some visualizations.
+
 ## Data Wrangling
 
 ```{r setup, eval = FALSE}
 
+# Load packages.
+
 library(tidyverse)
-library(readr)
 ```
 
 ```{r}
+
+# Read in data, and look at the first few lines.
 
 ifood <- read_csv('ifood.csv', show_col_types = F)
 
@@ -21,3 +26,163 @@ ifood
 
 ```
 
+```{r}
+
+# Clean up the marital status column
+
+ifood <- ifood |> 
+  filter(Marital_Status != "YOLO", 
+         Marital_Status != "Alone", 
+         Marital_Status != "Absurd")
+
+```
+
+```{r}
+
+summary(ifood$Income)
+```
+
+```{r}
+
+# Turn education into an ordered factor.
+
+ifood <- ifood |>
+  mutate(
+    Education = factor(Education, levels = c("High School", "Bachelor's", "Master's", "PhD"))
+  )
+```
+
+```{r}
+
+# Create age groups using the birth years.
+
+ifood <- ifood |>
+  mutate(
+    Age = 2025 - Year_Birth,
+    age_group = case_when(
+      Age >= 18 & Age < 30 ~ "18-29",
+      Age >= 30 & Age < 45 ~ "30-44",
+      Age >= 45 & Age < 60 ~ "45-59",
+      Age >= 60 & Age < 75 ~ "60-74",
+      Age >= 75 ~ "75+"
+    ),
+    age_group = factor(age_group, levels = c("18-29", "30-44", "45-59", "60-74", "75+"))
+  )
+```
+
+```{r}
+
+# Create Income brackets.
+
+ifood <- ifood |>
+  mutate(
+    income_bracket = case_when(
+      Income >= 0 & Income < 25000 ~ "0-25K",
+      Income >= 25000 & Income < 50000 ~ "25-50K",
+      Income >= 50000 & Income < 100000 ~ "50-100K",
+      Income >= 100000 & Income < 200000 ~ "100-200K",
+      Income >= 200000 ~ "200K+"
+    ),
+    income_bracket = factor(income_bracket, levels = c("0-25K", "25-50K", "50-100K", "100-200K", "200K+"))
+  )
+
+```
+
+## Exploratory Data Analysis
+
+```{r}
+
+# We are interested in the distribution of recency. How many customers haven't purchased anything in over 60 days?
+
+ifood |> count(Recency > 60)
+```
+
+```{r}
+
+# For my analysis, I will consider these customers to have "churned."
+
+ifood <- ifood |> 
+  mutate(Churned = if_else(Recency > 60, "Yes", "No"))
+```
+
+```{r}
+
+# I want to figure out what demographic groups are more likely to churn, so I will compare churn rate across different catgeorical variables.
+
+# Marital Status
+
+ifood |> 
+  filter(!is.na(Marital_Status)) |> 
+  count(Marital_Status, Churned) |> 
+  group_by(Marital_Status) |> 
+  mutate(prop = n / sum(n)) |> 
+  ggplot(aes(
+    x = Marital_Status, 
+    y = n, 
+    fill = Churned
+  )) +
+  geom_col(position = "fill") +
+  scale_fill_manual(values = c("No" = "cornflowerblue", "Yes" = "darkblue")) +
+  labs(x = "Marital Status", y = "Churn Rate (%)", title = "Churn Rate by Marital Status", subtitle = 'Based on a sample of 2,240 iFood customers')+ 
+  theme_minimal()
+```
+
+```{r}
+
+# Education
+
+ifood |> 
+  filter(!is.na(Education)) |> 
+  count(Education, Churned) |> 
+  group_by(Education) |> 
+  mutate(prop = n / sum(n)) |> 
+  ggplot(aes(
+    x = Education, 
+    y = n, 
+    fill = Churned
+  )) +
+  geom_col(position = "fill") +
+  scale_fill_manual(values = c("No" = "cornflowerblue", "Yes" = "darkblue")) +
+  labs(x = "Education Level", y = "Churn Rate (%)", title = "Churn Rate by Education Level", subtitle = 'Based on a sample of 2,240 iFood customers')+ 
+  theme_minimal()
+```
+
+```{r}
+
+# Age Group
+
+ifood |> 
+  filter(!is.na(age_group)) |> 
+  count(age_group, Churned) |> 
+  group_by(age_group) |> 
+  mutate(prop = n / sum(n)) |> 
+  ggplot(aes(
+    x = age_group, 
+    y = n, 
+    fill = Churned
+  )) +
+  geom_col(position = "fill") +
+  scale_fill_manual(values = c("No" = "cornflowerblue", "Yes" = "darkblue")) +
+  labs(x = "Age Group", y = "Churn Rate (%)", title = "Churn Rate by Age Group", subtitle = 'Based on a sample of 2,240 iFood customers')+ 
+  theme_minimal()
+```
+
+```{r}
+
+# Income Bracket
+
+ifood |> 
+  filter(!is.na(income_bracket)) |> 
+  count(income_bracket, Churned) |> 
+  group_by(income_bracket) |> 
+  mutate(prop = n / sum(n)) |> 
+  ggplot(aes(
+    x = income_bracket, 
+    y = n, 
+    fill = Churned
+  )) +
+  geom_col(position = "fill") +
+  scale_fill_manual(values = c("No" = "cornflowerblue", "Yes" = "darkblue")) +
+  labs(x = "Income Bracket", y = "Churn Rate (%)", title = "Churn Rate by Income Bracket", subtitle = 'Based on a sample of 2,240 iFood customers')+ 
+  theme_minimal()
+```
