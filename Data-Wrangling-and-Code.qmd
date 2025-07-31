@@ -7,7 +7,17 @@ editor: visual
 
 ## Data Wrangling
 
-```{r}
+```{r setup, eval = FALSE}
 
 library(tidyverse)
+library(readr)
 ```
+
+```{r}
+
+ifood <- read_csv('ifood.csv', show_col_types = F)
+
+ifood
+
+```
+
