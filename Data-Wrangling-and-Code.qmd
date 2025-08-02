@@ -88,7 +88,21 @@ ifood <- ifood |>
 
 ```
 
-## Exploratory Data Analysis
+```{r}
+
+# Turn 'Complain' into a factor.
+
+ifood <- ifood |>
+  mutate(
+      Complain = case_when(
+      Complain == 0 ~ 'No',
+      Complain == 1 ~ 'Yes'
+    ),
+    Complain = factor(Complain, levels = c('No', 'Yes'))
+  )
+```
+
+## Exploratory Data Analysis - Churned Customers
 
 ```{r}
 
@@ -104,6 +118,8 @@ ifood |> count(Recency > 60)
 ifood <- ifood |> 
   mutate(Churned = if_else(Recency > 60, "Yes", "No"))
 ```
+
+## Exploratory Data Analysis - Categorical Variables
 
 ```{r}
 
@@ -185,4 +201,91 @@ ifood |>
   scale_fill_manual(values = c("No" = "cornflowerblue", "Yes" = "darkblue")) +
   labs(x = "Income Bracket", y = "Churn Rate (%)", title = "Churn Rate by Income Bracket", subtitle = 'Based on a sample of 2,240 iFood customers')+ 
   theme_minimal()
+```
+
+```{r}
+
+
+# Complaint Status
+
+ifood |> 
+  filter(!is.na(Complain)) |> 
+  count(Complain, Churned) |> 
+  group_by(Complain) |> 
+  mutate(prop = n / sum(n)) |> 
+  ggplot(aes(
+    x = Complain, 
+    y = n, 
+    fill = Churned
+  )) +
+  geom_col(position = "fill") +
+  scale_fill_manual(values = c("No" = "cornflowerblue", "Yes" = "darkblue")) +
+  labs(x = "Complained in Last 2 Years", y = "Churn Rate (%)", title = "Churn Rate by Complaint Status", subtitle = 'Based on a sample of 2,240 iFood customers')+ 
+  theme_minimal()
+```
+
+```{r}
+
+# Number of kids at home
+
+ifood |> 
+  filter(!is.na(Complain)) |> 
+  count(Kidhome, Churned) |> 
+  group_by(Kidhome) |> 
+  mutate(prop = n / sum(n)) |> 
+  ggplot(aes(
+    x = Kidhome, 
+    y = n, 
+    fill = Churned
+  )) +
+  geom_col(position = "fill") +
+  scale_fill_manual(values = c("No" = "cornflowerblue", "Yes" = "darkblue")) +
+  labs(x = "Number of Kids at Home", y = "Churn Rate (%)", title = "Churn Rate by Number of Kids at Home", subtitle = 'Based on a sample of 2,240 iFood customers')+ 
+  theme_minimal()
+
+```
+
+```{r}
+
+
+# Number of teens at home
+
+ifood |> 
+  filter(!is.na(Complain)) |> 
+  count(Teenhome, Churned) |> 
+  group_by(Teenhome) |> 
+  mutate(prop = n / sum(n)) |> 
+  ggplot(aes(
+    x = Teenhome, 
+    y = n, 
+    fill = Churned
+  )) +
+  geom_col(position = "fill") +
+  scale_fill_manual(values = c("No" = "cornflowerblue", "Yes" = "darkblue")) +
+  labs(x = "Number of Teens at Home", y = "Churn Rate (%)", title = "Churn Rate by Number of Teens at Home", subtitle = 'Based on a sample of 2,240 iFood customers')+ 
+  theme_minimal()
+```
+
+## Exploratory Data Analysis - Quantitative Variables
+
+```{r warning = FALSE}
+
+# Churn rate over time
+ifood |> 
+  mutate(month = floor_date(Dt_Customer, "month")) |> 
+  count(month, Churned) |> 
+  group_by(month) |> 
+  mutate(prop = n / sum(n)) |> 
+  filter(Churned == "Yes") |> 
+  ggplot(aes(x = month, y = prop)) +
+  geom_line(color = 'darkblue', size = 1.5) + 
+  scale_x_date(limits = c(min(ifood$Dt_Customer), max(ifood$Dt_Customer))) +
+  labs(
+    title = "Churn Rate Over Time",
+    x = 'Enrollment Month',
+    y = 'Churn Rate (%)',
+    subtitle = 'Based on a sample of 2,240 iFood customers'
+  ) +
+  theme_minimal()
+
 ```
