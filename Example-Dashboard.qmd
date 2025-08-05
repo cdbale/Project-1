@@ -1,5 +1,5 @@
 ---
-title: "iFood Dashboard"
+title: "iFood Customer Churn Dashboard"
 author: "Sofia Scribner"
 format: 
   dashboard:
@@ -12,6 +12,10 @@ format:
 
 library(tidyverse)
 ifood <- read_csv('ifood_cleaned.csv', show_col_types = FALSE)
+
+ifood <- ifood |>
+  mutate(income_bracket = factor(income_bracket, levels = c("0-25K", "25-50K", "50-100K", "100-200K", "200K+")),
+         Education = factor(Education, levels = c("High School", "Bachelor's", "Master's", "PhD")))
 
 ```
 
@@ -44,6 +48,7 @@ sum(ifood$Complain == "Yes", na.rm = TRUE)
 ## Row {height=70%}
 
 ```{r}
+#| title: Churn Rate Over Time
 #| fig-width: 5
 #| fig-height: 4
 # Churn rate over time
@@ -151,7 +156,6 @@ ifood |>
 ```
 
 ```{r}
-
 #| title: Number of Kids
 #| fig-width: 5
 #| fig-height: 4
@@ -174,7 +178,6 @@ ifood |>
 ```
 
 ```{r}
-
 #| title: Number of Teens
 #| fig-width: 5
 #| fig-height: 4

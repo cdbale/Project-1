@@ -1,0 +1,4 @@
+- source: Example-Dashboard.qmd
+  quarto-pub:
+    - id: 934e5e97-8d79-4169-864b-ad6fc189e936
+      url: 'https://sofiadscribner.quarto.pub/ifood-dashboard'
