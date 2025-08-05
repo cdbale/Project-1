@@ -1,5 +1,199 @@
 ---
 title: "iFood Dashboard"
 author: "Sofia Scribner"
-format: dashboard
+format: 
+  dashboard:
+    logo: ifood.png
 ---
+
+```{r}
+
+# Load packages and wrangled/cleaned data
+
+library(tidyverse)
+ifood <- read_csv('ifood_cleaned.csv', show_col_types = FALSE)
+
+```
+
+## Row {height=30%}
+
+```{r}
+#| content: valuebox
+#| title: "Average Recency"
+#| icon: "clock"
+#| color: "#ff1728"
+round(mean(ifood$Recency), 1)
+```
+
+```{r}
+#| content: valuebox
+#| title: "Current Churn Rate"
+#| icon: "calendar"
+#| color: "#ff1728"
+paste0(round(mean(ifood$Churned == "Yes") * 100, 1), "%")
+```
+
+```{r}
+#| content: valuebox
+#| title: "# of Complaints"
+#| icon: "emoji-frown"
+#| color: "#ff1728"
+sum(ifood$Complain == "Yes", na.rm = TRUE)
+```
+
+## Row {height=70%}
+
+```{r}
+#| fig-width: 5
+#| fig-height: 4
+# Churn rate over time
+ifood |> 
+  mutate(month = floor_date(Dt_Customer, "month")) |> 
+  count(month, Churned) |> 
+  group_by(month) |> 
+  mutate(prop = n / sum(n)) |> 
+  filter(Churned == "Yes") |> 
+  ggplot(aes(x = month, y = prop)) +
+  geom_line(color = '#ff1728', size = 1.5) + 
+  scale_x_date(limits = c(min(ifood$Dt_Customer), max(ifood$Dt_Customer))) +
+  labs(
+    title = "Churn Rate Over Time",
+    x = 'Enrollment Month',
+    y = 'Churn Rate (%)',
+    subtitle = 'Based on a sample of 2,240 iFood customers'
+  ) +
+  theme_minimal()
+
+```
+
+### Column {.tabset}
+
+```{r}
+#| title: Marital Status
+#| fig-width: 5
+#| fig-height: 4
+ifood |> 
+  filter(!is.na(Marital_Status)) |> 
+  count(Marital_Status, Churned) |> 
+  group_by(Marital_Status) |> 
+  mutate(prop = n / sum(n)) |> 
+  ggplot(aes(
+    x = Marital_Status, 
+    y = n, 
+    fill = Churned
+  )) +
+  geom_col(position = "fill") +
+  scale_fill_manual(values = c("No" = "#ffb4b9", "Yes" = "#ff1728")) +
+  labs(x = "Marital Status", y = "Churn Rate (%)", title = "Churn Rate by Marital Status", subtitle = 'Based on a sample of 2,240 iFood customers')+ 
+  theme_minimal()
+```
+
+```{r}
+#| title: Education
+#| fig-width: 5
+#| fig-height: 4
+ifood |> 
+  filter(!is.na(Education)) |> 
+  count(Education, Churned) |> 
+  group_by(Education) |> 
+  mutate(prop = n / sum(n)) |> 
+  ggplot(aes(
+    x = Education, 
+    y = n, 
+    fill = Churned
+  )) +
+  geom_col(position = "fill") +
+  scale_fill_manual(values = c("No" = "#ffb4b9", "Yes" = "#ff1728")) +
+  labs(x = "Education Level", y = "Churn Rate (%)", title = "Churn Rate by Education Level", subtitle = 'Based on a sample of 2,240 iFood customers')+ 
+  theme_minimal()
+```
+
+```{r}
+#| title: Age Group
+#| fig-width: 5
+#| fig-height: 4
+
+ifood |> 
+  filter(!is.na(age_group)) |> 
+  count(age_group, Churned) |> 
+  group_by(age_group) |> 
+  mutate(prop = n / sum(n)) |> 
+  ggplot(aes(
+    x = age_group, 
+    y = n, 
+    fill = Churned
+  )) +
+  geom_col(position = "fill") +
+  scale_fill_manual(values = c("No" = "#ffb4b9", "Yes" = "#ff1728")) +
+  labs(x = "Age Group", y = "Churn Rate (%)", title = "Churn Rate by Age Group", subtitle = 'Based on a sample of 2,240 iFood customers')+ 
+  theme_minimal()
+```
+
+```{r}
+#| title: Income Bracket
+#| fig-width: 5
+#| fig-height: 4
+
+ifood |> 
+  filter(!is.na(income_bracket)) |> 
+  count(income_bracket, Churned) |> 
+  group_by(income_bracket) |> 
+  mutate(prop = n / sum(n)) |> 
+  ggplot(aes(
+    x = income_bracket, 
+    y = n, 
+    fill = Churned
+  )) +
+  geom_col(position = "fill") +
+  scale_fill_manual(values = c("No" = "#ffb4b9", "Yes" = "#ff1728")) +
+  labs(x = "Income Bracket", y = "Churn Rate (%)", title = "Churn Rate by Income Bracket", subtitle = 'Based on a sample of 2,240 iFood customers')+ 
+  theme_minimal()
+```
+
+```{r}
+
+#| title: Number of Kids
+#| fig-width: 5
+#| fig-height: 4
+
+
+ifood |> 
+  filter(!is.na(Complain)) |> 
+  count(Kidhome, Churned) |> 
+  group_by(Kidhome) |> 
+  mutate(prop = n / sum(n)) |> 
+  ggplot(aes(
+    x = Kidhome, 
+    y = n, 
+    fill = Churned
+  )) +
+  geom_col(position = "fill") +
+  scale_fill_manual(values = c("No" = "#ffb4b9", "Yes" = "#ff1728")) +
+  labs(x = "Number of Kids at Home", y = "Churn Rate (%)", title = "Churn Rate by Number of Kids at Home", subtitle = 'Based on a sample of 2,240 iFood customers')+ 
+  theme_minimal()
+```
+
+```{r}
+
+#| title: Number of Teens
+#| fig-width: 5
+#| fig-height: 4
+
+ifood |> 
+  filter(!is.na(Complain)) |> 
+  count(Teenhome, Churned) |> 
+  group_by(Teenhome) |> 
+  mutate(prop = n / sum(n)) |> 
+  ggplot(aes(
+    x = Teenhome, 
+    y = n, 
+    fill = Churned
+  )) +
+  geom_col(position = "fill") +
+  scale_fill_manual(values = c("No" = "#ffb4b9", "Yes" = "#ff1728")) +
+  labs(x = "Number of Teens at Home", y = "Churn Rate (%)", title = "Churn Rate by Number of Teens at Home", subtitle = 'Based on a sample of 2,240 iFood customers')+ 
+  theme_minimal()
+
+
+```
+

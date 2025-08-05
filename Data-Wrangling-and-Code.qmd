@@ -119,6 +119,15 @@ ifood <- ifood |>
   mutate(Churned = if_else(Recency > 60, "Yes", "No"))
 ```
 
+```{r}
+
+# Save cleaned data
+
+ifood_cleaned <- ifood
+
+write.csv(ifood_cleaned, "ifood_cleaned.csv")
+```
+
 ## Exploratory Data Analysis - Categorical Variables
 
 ```{r}
