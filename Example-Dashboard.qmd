@@ -42,7 +42,7 @@ paste0(round(mean(ifood$Churned == "Yes") * 100, 1), "%")
 #| title: "# of Complaints"
 #| icon: "emoji-frown"
 #| color: "#ff1728"
-sum(ifood$Complain == "Yes", na.rm = TRUE)
+sum(ifood$Complain == "Yes")
 ```
 
 ## Row {height=70%}
