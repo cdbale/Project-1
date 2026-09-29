@@ -1,0 +1,240 @@
+---
+title: "Data Wrangling and Code"
+subtitle: "Customer inactivity and churn risk"
+author: "MKTG 411 teaching example"
+format: docx
+editor: visual
+---
+
+## Business objective
+
+iFood wants to decide whom to include in a campaign that encourages inactive customers to purchase again. I define inactivity as more than 60 days since the last purchase, compare customer profiles, and use past product spending to select an initial test audience. The analysis identifies 862 inactive customers and recommends testing an offer among 224 of them with high past spending.
+
+## Import and inspect the data
+
+Keep this QMD and the raw `ifood.csv` in the same folder. Open the QMD in RStudio and render it to Word. The first chunk loads the tidyverse and imports the raw file so the analysis can run in a fresh R session. Each row describes one customer; `ID` identifies that customer. I inspect the variables used in the main analysis before creating new ones.
+
+```{r, message=FALSE}
+library(tidyverse)
+
+ifood_raw <- read_csv("ifood.csv", show_col_types = FALSE)
+
+ifood_raw |>
+  select(ID, Recency, Income, Year_Birth, MntWines:MntGoldProds) |>
+  glimpse(width = 65)
+```
+
+I check the number of records and the range of recency values. I also count records with complete IDs, recency, and product spending. Removing missing values for this check does not change `ifood_raw` because I do not assign the result back to it.
+
+```{r}
+ifood_raw |>
+  summarize(customers = n(),
+            min_recency = min(Recency),
+            max_recency = max(Recency))
+
+ifood_raw |>
+  select(ID, Recency, MntWines:MntGoldProds) |>
+  drop_na() |>
+  summarize(complete_records = n())
+
+# An empty result means no customer ID occurs more than once.
+ifood_raw |>
+  count(ID) |>
+  filter(n > 1)
+```
+
+There are 2,240 customer records, no repeated IDs, and no missing values in the fields used to select the campaign audience. Recency ranges from 0 to 99 days. Income and birth year require separate checks, described below. I retain all customers in the main analysis and exclude questionable values only from comparisons that use those fields.
+
+## Define inactivity and past spending
+
+`Recency` records days since the last purchase. The logical variable `inactive` is TRUE when recency exceeds 60 and FALSE otherwise; a customer at exactly 60 days is outside the inactive group.
+
+The six `Mnt` columns record product spending over the last two years. I add them to create `product_spending`. All six fields are complete in this file, so I do not replace missing spending with zero. The data dictionary does not specify the currency. Spending is recorded in the file's units and measures neither profit nor future customer value.
+
+```{r}
+ifood <- ifood_raw |>
+  mutate(
+    inactive = Recency > 60,
+    product_spending = MntWines + MntFruits + MntMeatProducts +
+      MntFishProducts + MntSweetProducts + MntGoldProds
+  )
+```
+
+## Measure the inactive audience
+
+The following count table reports the number and percentage of customers in each group. Its denominator is all 2,240 customers.
+
+```{r}
+ifood |>
+  count(inactive) |>
+  mutate(percent = 100 * n / sum(n))
+```
+
+The file contains 862 inactive customers, or 38.5% of the customer base. The histogram shows the distribution of days since the last purchase. This file describes customers at one observation point; it does not show how inactivity has changed over time.
+
+```{r}
+#| fig-width: 6.5
+#| fig-height: 3
+ifood |>
+  ggplot(aes(x = Recency)) +
+  geom_histogram(binwidth = 10, fill = "cornflowerblue",
+                 color = "white") +
+  labs(title = "Time since the last purchase",
+       subtitle = "All 2240 customers",
+       x = "Days since the last purchase", y = "Customers")
+```
+
+## Compare recorded incomes
+
+Income is missing for 24 customers, and one recorded value is 666,666. For this comparison, I retain nonmissing incomes between 0 and 200,000. The upper bound flags an extreme value for review; it is not proof that the value is wrong. This leaves 2,215 customers in the income comparison. All 2,240 remain in `ifood` and in the campaign audience calculations.
+
+```{r}
+income_data <- ifood |>
+  drop_na(Income) |>
+  filter(Income >= 0, Income <= 200000)
+
+income_data |>
+  group_by(inactive) |>
+  summarize(customers = n(),
+            average_income = mean(Income),
+            median_income = median(Income))
+```
+
+The 850 inactive customers with usable income records have a median income of 51,445, compared with 51,315 for the 1,365 other customers. Their means are also similar, at about 52,271 and 51,782. The box plots show substantial overlap. These comparisons provide little support for an income-based targeting rule and do not establish that income is unrelated to every form of customer behavior.
+
+```{r}
+#| fig-width: 6.5
+#| fig-height: 3
+income_data |>
+  ggplot(aes(x = Income, y = as.character(inactive))) +
+  geom_boxplot() +
+  labs(title = "Recorded income by inactivity status",
+       subtitle = "2215 customers with usable income records",
+       x = "Household income in recorded units",
+       y = "Inactive for more than 60 days")
+```
+
+## Compare birth cohorts
+
+The file does not give a confirmed observation date for calculating age. I therefore compare customers born before 1960 with those born in 1960 or later. Three birth years precede 1920; I leave those records out of this comparison while retaining them elsewhere.
+
+Within each cohort, I count customers and add the TRUE values of `inactive` to count inactive customers. R treats TRUE as 1 and FALSE as 0 when adding them. The inactivity percentage uses the customer count for that same cohort as its denominator.
+
+```{r}
+ifood |>
+  drop_na(Year_Birth) |>
+  filter(Year_Birth >= 1920) |>
+  mutate(born_before_1960 = Year_Birth < 1960) |>
+  group_by(born_before_1960) |>
+  summarize(customers = n(), inactive_customers = sum(inactive)) |>
+  mutate(inactive_percent = 100 * inactive_customers / customers)
+```
+
+There are 223 inactive customers among the 567 born before 1960 (39.3%), compared with 638 among the 1,670 born later (38.2%). This broad comparison provides little separation for targeting.
+## Compare household composition
+
+`Kidhome` counts small children at home and `Teenhome` counts teenagers. I use `pivot_longer()` to put these two measures in one column, then summarize each measure separately. Each customer appears once in each comparison.
+
+```{r}
+household_summary <- ifood |>
+  select(inactive, Kidhome, Teenhome) |>
+  pivot_longer(c(Kidhome, Teenhome),
+               names_to = "measure", values_to = "number_at_home") |>
+  group_by(measure, number_at_home) |>
+  summarize(customers = n(), inactive_customers = sum(inactive),
+            .groups = "drop") |>
+  mutate(inactive_percent = 100 * inactive_customers / customers)
+
+household_summary
+```
+
+The two-teen group has 26 inactive customers out of 52 (50.0%). The two-child group has 21 out of 48 (43.8%). These groups are small relative to the other groups in their respective comparisons. Their higher rates suggest questions for testing, not evidence that children cause inactivity or that a family-focused discount will succeed.
+
+```{r}
+#| fig-width: 6.5
+#| fig-height: 3
+household_summary |>
+  ggplot(aes(x = as.character(number_at_home),
+             y = inactive_percent)) +
+  geom_col(fill = "cornflowerblue") +
+  facet_wrap(~ measure) +
+  labs(title = "Inactivity and household composition",
+       subtitle = "2240 customers per panel with group sizes in the table",
+       x = "Number of children or teenagers at home",
+       y = "Inactive customers percent")
+```
+
+## Check complaints and enrollment groups
+
+`Complain` equals 1 for customers who complained and 0 otherwise. I use the same group counts and percentage calculation as in the profile comparisons.
+
+```{r}
+ifood |>
+  group_by(Complain) |>
+  summarize(customers = n(), inactive_customers = sum(inactive)) |>
+  mutate(inactive_percent = 100 * inactive_customers / customers)
+```
+
+Eight of 21 customers who complained are inactive (38.1%), compared with 854 of 2,219 other customers (38.5%). The file does not measure complaint resolution or customer satisfaction, and the complaint group is small.
+
+`Dt_Customer` is the enrollment date, which `read_csv()` recognizes as a date in this file. The `year()` function lets me compare customers who joined in different calendar years.
+
+```{r}
+ifood |>
+  mutate(enrollment_year = year(Dt_Customer)) |>
+  group_by(enrollment_year) |>
+  summarize(customers = n(), inactive_customers = sum(inactive)) |>
+  mutate(inactive_percent = 100 * inactive_customers / customers)
+```
+
+Inactivity is 40.1% for the 494 customers enrolled in 2012, 39.0% for the 1,189 enrolled in 2013, and 35.9% for the 557 enrolled in 2014. Differences could reflect who joined or how long they have been customers.
+
+## Select a practical audience to test
+
+The profile comparisons do not identify a compelling demographic rule. I instead select the highest-spending quarter of all customers, then keep those who are inactive. One quarter of 2,240 is 560. `slice_max()` selects the 560 largest spending values. It keeps ties by default, so I check the resulting count before calling the group a quarter of the file.
+
+```{r}
+high_spenders <- ifood |>
+  slice_max(product_spending, n = 560)
+
+high_spenders |>
+  summarize(customers = n(), lowest_spending = min(product_spending))
+
+priority_customers <- high_spenders |>
+  filter(inactive == TRUE)
+```
+
+The selected group contains exactly 560 customers and has a minimum recorded product spend of 1,047. Of those customers, 224 are inactive (40.0%). This group is not unusually inactive compared with the full customer base. Its past spending provides a practical reason to test it, rather than evidence of greater likely response or profitability.
+
+The next summaries calculate customer counts and spending for each inactivity status and for the proposed pilot audience. I join the summaries by `inactive` so the pilot group's counts and spending are divided by the totals for inactive customers.
+
+```{r}
+audience_summary <- ifood |>
+  group_by(inactive) |>
+  summarize(base_customers = n(), base_spending = sum(product_spending))
+
+audience_summary
+```
+
+```{r}
+
+priority_summary <- priority_customers |>
+  group_by(inactive) |>
+  summarize(customers = n(), total_spending = sum(product_spending)) |>
+  left_join(audience_summary, join_by(inactive)) |>
+  mutate(
+    customer_percent = 100 * customers / base_customers,
+    spending_percent = 100 * total_spending / base_spending
+  ) |>
+  select(customers, total_spending, customer_percent, spending_percent)
+
+priority_summary
+```
+
+The 224 proposed pilot customers represent 26.0% of the 862 inactive customers and 62.6% of that group's recorded product spending. The other 638 inactive customers remain a possible audience. Spending covers two years, whereas recency records days since the last purchase; neither tells us what an offer would cause customers to do next.
+
+## Recommendation and limitations
+
+Pilot a reactivation offer among the 224 inactive customers with high past spending. Randomly assign eligible customers to an offer or a no-offer comparison group. Compare purchases over the following 30 days. If budget permits, run a comparable test among the other 638 inactive customers before deciding which audience to expand.
+
+The 60-day rule is a justifiable although arbitrary activity cutoff, and other definitions are possible. The observed comparisons do not show that demographic characteristics cause inactivity, and this analysis cannot establish whether an offer will generate additional profit. Campaign costs, product margins, and follow-up purchases are needed to evaluate the pilot.
