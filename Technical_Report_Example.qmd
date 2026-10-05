@@ -6,6 +6,10 @@ format: docx
 editor: visual
 ---
 
+**Example context.** This teaching example answers the hypothetical prompt below. For your Project 1 submission, choose one of the two business objectives in the project instructions.
+
+**Hypothetical prompt.** iFood wants to reactivate customers who have not purchased for more than 60 days. Use customer profiles and past product spending to recommend an initial campaign audience and a test of a reactivation offer.
+
 ## Business objective
 
 iFood wants to decide whom to include in a campaign that encourages inactive customers to purchase again. I define inactivity as more than 60 days since the last purchase, compare customer profiles, and use past product spending to select an initial test audience. The analysis identifies 862 inactive customers and recommends testing an offer among 224 of them with high past spending.
@@ -18,10 +22,6 @@ Keep this QMD and the raw `ifood.csv` in the same folder. Open the QMD in RStudi
 library(tidyverse)
 
 ifood_raw <- read_csv("ifood.csv", show_col_types = FALSE)
-
-ifood_raw |>
-  select(ID, Recency, Income, Year_Birth, MntWines:MntGoldProds) |>
-  glimpse(width = 65)
 ```
 
 I check the number of records and the range of recency values. I also count records with complete IDs, recency, and product spending. Removing missing values for this check does not change `ifood_raw` because I do not assign the result back to it.
@@ -100,7 +100,7 @@ income_data |>
             median_income = median(Income))
 ```
 
-The 850 inactive customers with usable income records have a median income of 51,445, compared with 51,315 for the 1,365 other customers. Their means are also similar, at about 52,271 and 51,782. The box plots show substantial overlap. These comparisons provide little support for an income-based targeting rule and do not establish that income is unrelated to every form of customer behavior.
+The 850 inactive customers with usable income records have a median income of 51,445, compared with 51,315 for the 1,365 other customers. Their means are also similar, at about 52,271 and 51,782. The box plots show substantial overlap. These comparisons provide little support for an income-based targeting rule.
 
 ```{r}
 #| fig-width: 6.5
@@ -130,7 +130,8 @@ ifood |>
   mutate(inactive_percent = 100 * inactive_customers / customers)
 ```
 
-There are 223 inactive customers among the 567 born before 1960 (39.3%), compared with 638 among the 1,670 born later (38.2%). This broad comparison provides little separation for targeting.
+There are 223 inactive customers among the 567 born before 1960 (39.3%), compared with 638 among the 1,670 born later (38.2%). This broad comparison provides little separation for targeting. 
+
 ## Compare household composition
 
 `Kidhome` counts small children at home and `Teenhome` counts teenagers. I use `pivot_longer()` to put these two measures in one column, then summarize each measure separately. Each customer appears once in each comparison.
